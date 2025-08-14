@@ -1,0 +1,15 @@
+Extract job application information from this email and respond with ONLY a JSON object.
+
+Email:
+Subject: {email_subject}
+From: {email_sender}
+Body: {email_body}
+
+Extract:
+- company_name: The hiring company name
+- position_title: Job position title
+- status: One of [applied, rejected, interview_scheduled, interview_completed, offer, offer_accepted, offer_declined, withdrawn, on_hold, unknown]
+- confidence: Your confidence level (0.0-1.0)
+
+Respond with ONLY valid JSON:
+{{"company_name": "Example Corp", "position_title": "Software Engineer", "status": "applied", "confidence": 0.9}}

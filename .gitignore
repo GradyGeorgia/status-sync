@@ -1,6 +1,10 @@
-# Ignore credentials and tokens
+# Credentials and authentication
 credentials.json
 token.json
+
+# API keys (if stored in files)
+.env
+*.key
 
 # Python
 __pycache__/
@@ -41,6 +45,7 @@ env/
 .DS_Store
 Thumbs.db
 
-# Output files
-emails.txt
+# Test files and outputs
+test_emails/
+test_results/
 *.log

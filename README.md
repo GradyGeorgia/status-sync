@@ -1,17 +1,17 @@
-# Gmail Email Parser
+# StatusSync - Job Application Email Parser
 
-This project provides a Python script to parse emails from Gmail between two specified dates using the Gmail API.
+Automatically parse job application emails from Gmail using Google's Gemini AI to extract company names, position titles, and application statuses.
 
 ## Features
 
-- Authenticate with Gmail API using OAuth 2.0
-- Fetch emails between specific date ranges
-- Parse email content including headers, body, and metadata
-- Save parsed emails to file
-- Support for various date formats
-- Error handling and logging
+- **Gmail Integration**: Fetch emails from Gmail API between date ranges
+- **AI-Powered Parsing**: Uses Google Gemini 2.5 Flash for accurate information extraction
+- **HTML Email Cleaning**: Automatically strips HTML to provide clean text for analysis
+- **Job Status Tracking**: Extracts company name, position title, and application status
+- **Free Tier Compatible**: Uses Google's free Gemini API tier
+- **External Prompt Templates**: Customizable AI prompts stored in text files
 
-## Setup
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -19,142 +19,132 @@ This project provides a Python script to parse emails from Gmail between two spe
 pip install -r requirements.txt
 ```
 
-### 2. Gmail API Setup
+### 2. Set Up Gmail API
 
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the Gmail API:
-   - Go to "APIs & Services" > "Library"
-   - Search for "Gmail API" and enable it
-4. Create credentials:
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "OAuth 2.0 Client ID"
-   - Choose "Desktop application"
-   - Download the JSON file and save it as `credentials.json` in this directory
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Enable Gmail API
+4. Create OAuth 2.0 credentials for a desktop application
+5. Download credentials as `credentials.json` in the project root
 
-### 3. First Run
+### 3. Set Up Gemini API
 
-On the first run, the script will open a browser window for authentication. After successful authentication, a `token.pickle` file will be created for subsequent runs.
+1. Get a free API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Set the environment variable:
+   ```bash
+   # Windows PowerShell
+   $Env:GEMINI_API_KEY = "your-api-key-here"
+   
+   # Linux/Mac
+   export GEMINI_API_KEY="your-api-key-here"
+   ```
 
-## Usage
-
-### Basic Usage
-
-```python
-from gmail_parser import GmailParser
-from datetime import datetime, timedelta
-
-# Initialize parser
-parser = GmailParser()
-
-# Authenticate
-parser.authenticate()
-
-# Get emails from last 7 days
-end_date = datetime.now()
-start_date = end_date - timedelta(days=7)
-
-emails = parser.get_emails_between_dates(
-    start_date=start_date,
-    end_date=end_date,
-    max_results=50
-)
-
-# Save to file
-parser.save_emails_to_file(emails, 'my_emails.txt')
-```
-
-### Using Specific Dates
-
-```python
-# Using string dates
-emails = parser.get_emails_between_dates(
-    start_date="2024-01-01",
-    end_date="2024-01-31",
-    max_results=100
-)
-
-# Using datetime objects
-from datetime import datetime
-start = datetime(2024, 1, 1)
-end = datetime(2024, 1, 31)
-
-emails = parser.get_emails_between_dates(
-    start_date=start,
-    end_date=end,
-    max_results=100
-)
-```
-
-## Running the Examples
+### 4. Run the Test
 
 ```bash
-# Run the main example
-python gmail_parser.py
-
-# Run additional examples
-python example.py
+python simple_test.py
 ```
 
-## Email Data Structure
+This will:
+- Authenticate with Gmail
+- Fetch emails from a specific date range
+- Parse job application emails with AI
+- Display extracted information
+## Project Structure
 
-Each parsed email contains the following information:
+```
+StatusSync/
+├── gmail_service.py          # Gmail API integration and HTML cleaning
+├── job_application_parser.py # Gemini AI-powered email parsing
+├── prompt_template.txt       # AI prompt template
+├── simple_test.py           # Test script
+├── requirements.txt         # Python dependencies
+├── credentials.json         # Gmail OAuth credentials (you provide)
+└── token.json              # Gmail auth token (auto-generated)
+```
+
+## Core Classes
+
+### GmailService
+- Handles Gmail API authentication
+- Fetches emails between date ranges
+- Strips HTML from email content using html2text
+
+### JobApplicationParser
+- Uses Google Gemini AI to extract job information
+- Returns structured JobApplication objects
+- Handles API errors and safety filter responses
+
+### JobApplication
+- Data class containing:
+  - `company_name`: The hiring company
+  - `position_title`: Job position title  
+  - `status`: Application status (applied, rejected, interview_scheduled, etc.)
+  - `confidence`: AI confidence level (0.0-1.0)
+
+## Usage Example
 
 ```python
-{
-    'id': 'message_id',
-    'thread_id': 'thread_id',
-    'subject': 'Email Subject',
-    'from': 'sender@example.com',
-    'to': 'recipient@example.com',
-    'date': 'Original date string',
-    'parsed_date': datetime_object,
-    'cc': 'cc@example.com',
-    'bcc': 'bcc@example.com',
-    'labels': ['INBOX', 'IMPORTANT'],
-    'snippet': 'Email preview text...',
-    'body': 'Full email body content'
-}
+from gmail_service import GmailService
+from job_application_parser import JobApplicationParser
+
+# Initialize services
+gmail = GmailService()
+gmail.authenticate()
+parser = JobApplicationParser()
+
+# Get emails and parse
+emails = gmail.get_emails("2023-09-26", "2023-09-27")
+for email in emails:
+    job_app = parser.parse_email(email)
+    if job_app:
+        print(f"{job_app.company_name}: {job_app.position_title} - {job_app.status}")
 ```
 
-## Error Handling
+## Supported Application Statuses
 
-The script includes comprehensive error handling for:
-- Authentication failures
-- Invalid date formats
-- Network issues
-- Malformed emails
-- API quota limits
+- `applied` - Application submitted
+- `rejected` - Application declined
+- `interview_scheduled` - Interview arranged
+- `interview_completed` - Interview finished
+- `offer` - Job offer received
+- `offer_accepted` - Offer accepted
+- `offer_declined` - Offer declined
+- `withdrawn` - Application withdrawn
+- `on_hold` - Application paused
+- `unknown` - Status unclear
 
-## Security Notes
+## Customizing AI Prompts
 
-- The `credentials.json` file contains sensitive information - do not commit it to version control
-- The `token.pickle` file contains your access token - keep it secure
-- Add both files to your `.gitignore`
+Edit `prompt_template.txt` to customize how the AI analyzes emails. The template uses these variables:
+- `{email_subject}` - Email subject line
+- `{email_sender}` - Email sender address
+- `{email_body}` - Email body content (first 1500 chars)
+
+## API Limits
+
+- **Gmail API**: 1 billion quota units per day (free)
+- **Gemini API**: 15 requests per minute, 1 million tokens per day (free tier)
+- The parser includes automatic rate limiting for free tier compliance
 
 ## Troubleshooting
 
-### Common Issues
+**Gmail Authentication Issues:**
+- Ensure `credentials.json` is in the project root
+- Run the script and complete OAuth flow in browser
 
-1. **"Credentials file not found"**: Make sure you've downloaded and placed the `credentials.json` file in the project directory
-2. **"Authentication failed"**: Delete the `token.pickle` file and re-authenticate
-3. **"No emails found"**: Check your date range and ensure there are emails in that period
-4. **"API quota exceeded"**: The Gmail API has usage limits - wait before making more requests
+**Gemini API Errors:**
+- Verify `GEMINI_API_KEY` environment variable is set
+- Check API quota limits in Google AI Studio
+- Content may be blocked by safety filters
 
-### Date Format Examples
+**No Emails Found:**
+- Verify date format (YYYY-MM-DD)
+- Check Gmail account has emails in date range
+- Try expanding date range
 
-The parser supports various date formats:
-- "2024-01-01"
-- "January 1, 2024"
-- "01/01/2024"
-- "2024-01-01 10:30:00"
-- datetime objects
+## License
 
-## Customization
+MIT License - feel free to use and modify for your job search tracking needs!
 
-You can extend the `GmailParser` class to add more features:
-- Filter by sender, subject, or labels
-- Extract attachments
-- Parse HTML content
-- Export to different formats (CSV, JSON)
-- Add custom search queries
+All options stay within Google Cloud's free tier for typical usage.

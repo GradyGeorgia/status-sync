@@ -1,17 +1,41 @@
 import os
 import base64
+import re
 from datetime import datetime
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+import html2text
 
 # Gmail API scope for reading emails
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
-class GmailParser:
+# Initialize html2text converter
+h = html2text.HTML2Text()
+h.ignore_links = True
+h.ignore_images = True
+h.body_width = 0  # Don't wrap lines
+h.unicode_snob = True  # Better Unicode handling
+
+def strip_html(html_content: str) -> str:
+    """Strip HTML tags and clean up text content using html2text"""
+    if not html_content:
+        return ""
+    
+    # Use html2text to convert HTML to clean text
+    clean_text = h.handle(html_content)
+    
+    # Clean up extra whitespace
+    clean_text = re.sub(r'\n\s*\n', '\n\n', clean_text)  # Multiple newlines to double newlines
+    clean_text = re.sub(r'[ \t]+', ' ', clean_text)  # Multiple spaces/tabs to single space
+    clean_text = clean_text.strip()
+    
+    return clean_text
+
+class GmailService:
     def __init__(self):
-        """Initialize the Gmail parser"""
+        """Initialize the Gmail service"""
         self.service = None
         self.credentials_file = 'credentials.json'
         self.token_file = 'token.json'
@@ -61,20 +85,22 @@ class GmailParser:
         return dt.strftime('%Y/%m/%d')
     
     def _extract_body(self, payload):
-        """Extract email body from payload"""
+        """Extract email body from payload and strip HTML"""
         body = ""
         
         if 'parts' in payload:
-            # Multi-part message
             for part in payload['parts']:
                 body += self._extract_body(part)
         else:
-            # Single part message
             if payload.get('body') and payload['body'].get('data'):
                 mime_type = payload.get('mimeType', '')
                 if mime_type in ['text/plain', 'text/html']:
                     data = payload['body']['data']
                     decoded_data = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                    
+                    if mime_type == 'text/html':
+                        decoded_data = strip_html(decoded_data)
+                    
                     body += decoded_data
         
         return body
@@ -94,14 +120,10 @@ class GmailParser:
         if not self.service:
             raise RuntimeError("Not authenticated")
         
-        # Parse dates to Gmail API format
         start_str = self._parse_date(start_date)
         end_str = self._parse_date(end_date)
         
-        # Build Gmail search query
         query = f'after:{start_str} before:{end_str}'
-        
-        print(f"Searching for emails between {start_str} and {end_str}")
         
         try:
             # Get message list
