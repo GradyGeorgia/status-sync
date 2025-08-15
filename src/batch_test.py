@@ -55,6 +55,7 @@ def main():
                 
                 if result:
                     print(f"✓ Successfully extracted:")
+                    print(f"  Is Job Application Update: {result.is_job_application_update}")
                     print(f"  Company: {result.company_name}")
                     print(f"  Position: {result.position_title}")
                     print(f"  Status: {result.status}")

@@ -5,7 +5,7 @@ For each subject, respond with exactly "YES" if it's related to:
 - Interview scheduling or feedback  
 - Job offers or rejections
 
-Respond with exactly "NO" if it's not job-application-related or is an ad for job opportunities.
+Respond with exactly "NO" if it's not job application related or is an ad for job opportunities.
 
 Email Subjects:
 {email_subjects_list}

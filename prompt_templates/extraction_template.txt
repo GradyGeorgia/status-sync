@@ -1,15 +1,21 @@
 Extract job application information from this email and respond with ONLY a JSON object.
 
+Extract:
+- is_job_application_update: One of [yes, no]. Respond with "yes" if this email involves and update to an application status. Respond with "no" if this email is unrelated or an ad for positions.
+- company_name: The hiring company name
+- position_title: Job position title. Simplify this to just the name of the role without punctuation, such as "Software Engineer Intern 2024"
+- status: One of [applied, rejected, interview_scheduled, interview_completed, offer, offer_accepted, offer_declined, withdrawn, on_hold, unknown]
+- confidence: Your confidence level (0.0-1.0)
+
+If a piece of data is missing, put "unknown" for that value.
+
+Respond with ONLY valid JSON such as:
+{{"is_job_application_update": "yes", "company_name": "Google", "position_title": "Software Engineer", "status": "applied", "confidence": 0.9}}
+{{"is_job_application_update": "no", "company_name": "unknown", "position_title": "unknown", "status": "unknown", "confidence": 0.8}}
+
 Email:
 Subject: {email_subject}
 From: {email_sender}
 Body: {email_body}
 
-Extract:
-- company_name: The hiring company name
-- position_title: Job position title
-- status: One of [applied, rejected, interview_scheduled, interview_completed, offer, offer_accepted, offer_declined, withdrawn, on_hold, unknown]
-- confidence: Your confidence level (0.0-1.0)
-
-Respond with ONLY valid JSON:
-{{"company_name": "Example Corp", "position_title": "Software Engineer", "status": "applied", "confidence": 0.9}}
+JSON response:

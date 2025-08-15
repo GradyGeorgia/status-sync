@@ -1,13 +1,13 @@
-Is this email subject related to job applications, hiring, recruiting, or career opportunities?
+Classify this email subject as job application related or not job application related.
 
-Email Subject: "{email_subject}"
-
-Respond with only "YES" or "NO" based on whether this subject line indicates the email is about:
+Respond with exactly "YES" if it's related to:
 - Job applications or application status
-- Interview scheduling or feedback
+- Interview scheduling or feedback  
 - Job offers or rejections
-- Recruiting or hiring communications
 
-IMPORTANT: Respond with exactly one word: either YES or NO. Do not include any explanation or additional text.
+Respond with exactly "NO" if it's not job application related or is an ad for job opportunities.
 
-Response: 
+Email Subject:
+{email_subject}
+
+Response (only YES or NO):
