@@ -37,8 +37,10 @@ class GmailService:
     def __init__(self):
         """Initialize the Gmail service"""
         self.service = None
-        self.credentials_file = 'credentials.json'
-        self.token_file = 'token.json'
+        # Look for credentials in the parent directory (project root)
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.credentials_file = os.path.join(parent_dir, 'credentials.json')
+        self.token_file = os.path.join(parent_dir, 'token.json')
     
     def authenticate(self):
         """Gmail API authentication"""

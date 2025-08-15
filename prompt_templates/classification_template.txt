@@ -7,6 +7,7 @@ Respond with only "YES" or "NO" based on whether this subject line indicates the
 - Interview scheduling or feedback
 - Job offers or rejections
 - Recruiting or hiring communications
-- Career opportunities
 
-Response:
+IMPORTANT: Respond with exactly one word: either YES or NO. Do not include any explanation or additional text.
+
+Response: 

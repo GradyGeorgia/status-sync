@@ -108,16 +108,17 @@ class JobApplicationParser:
             bool: True if the email appears to be job application related, False otherwise
         """
         if not email_subject.strip():
+            print("Email subject is empty when trying to classify")
             return False
             
         prompt = self.create_classification_prompt(email_subject)
-        response_text = self._send_to_gemini(prompt, max_tokens=10, operation_name="email classification")
+        response_text = self._send_to_gemini(prompt, max_tokens=100)
         
         if not response_text:
+            print("No response text when trying to classify")
             return False
             
         is_job_related = "YES" in response_text.upper()
-        print(f"Subject classification: {'JOB-RELATED' if is_job_related else 'NOT JOB-RELATED'} - {email_subject[:60]}...")
         
         return is_job_related
 
@@ -128,10 +129,8 @@ class JobApplicationParser:
         body = email_data.get('body', '')
         sender = email_data.get('from', '')
         
-        print(f"Analyzing: {subject[:50]}...")
-        
         prompt = self.create_extraction_prompt(subject, sender, body)
-        response_text = self._send_to_gemini(prompt, max_tokens=500, operation_name="email extraction")
+        response_text = self._send_to_gemini(prompt, max_tokens=500)
         
         if not response_text:
             return None
@@ -157,7 +156,6 @@ class JobApplicationParser:
                 confidence=float(data.get('confidence', 0.8))
             )
             
-            print(f"Extracted: {job_app.company_name} - {job_app.position_title} - {job_app.status}")
             return job_app
             
         except json.JSONDecodeError as e:
