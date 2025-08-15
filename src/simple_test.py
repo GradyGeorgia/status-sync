@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from gmail_service import GmailService
-from job_application_parser import JobApplicationParser
+from src.gmail_service import GmailService
+from src.job_application_parser import JobApplicationParser
 
 def main():
     # Initialize Gmail service and authenticate
@@ -30,7 +30,7 @@ def main():
         # Parse with job application parser
         print(f"\nAttempting to parse email with Gemini AI...")
         parser = JobApplicationParser()
-        result = parser.parse_email(workday_email)
+        result = parser.extract_email_data(workday_email)
         
         print(f"\nExtracted information:")
         if result:

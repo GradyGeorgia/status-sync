@@ -56,7 +56,9 @@ This will:
 StatusSync/
 ├── gmail_service.py          # Gmail API integration and HTML cleaning
 ├── job_application_parser.py # Gemini AI-powered email parsing
-├── prompt_template.txt       # AI prompt template
+├── prompt_templates/         # AI prompt templates
+│   ├── classification_template.txt  # Email classification prompt
+│   └── extraction_template.txt      # Job data extraction prompt
 ├── simple_test.py           # Test script
 ├── requirements.txt         # Python dependencies
 ├── credentials.json         # Gmail OAuth credentials (you provide)
@@ -116,7 +118,11 @@ for email in emails:
 
 ## Customizing AI Prompts
 
-Edit `prompt_template.txt` to customize how the AI analyzes emails. The template uses these variables:
+Edit the template files in the `prompt_templates/` directory to customize how the AI analyzes emails:
+- `classification_template.txt` - Controls email classification logic
+- `extraction_template.txt` - Controls job application data extraction
+
+The extraction template uses these variables:
 - `{email_subject}` - Email subject line
 - `{email_sender}` - Email sender address
 - `{email_body}` - Email body content (first 1500 chars)

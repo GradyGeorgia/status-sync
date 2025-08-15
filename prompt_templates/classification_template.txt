@@ -1,0 +1,12 @@
+Is this email subject related to job applications, hiring, recruiting, or career opportunities?
+
+Email Subject: "{email_subject}"
+
+Respond with only "YES" or "NO" based on whether this subject line indicates the email is about:
+- Job applications or application status
+- Interview scheduling or feedback
+- Job offers or rejections
+- Recruiting or hiring communications
+- Career opportunities
+
+Response:
