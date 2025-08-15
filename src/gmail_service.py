@@ -125,14 +125,15 @@ class GmailService:
         start_str = self._parse_date(start_date)
         end_str = self._parse_date(end_date)
         
-        query = f'after:{start_str} before:{end_str}'
+        query = f'after:{start_str} before:{end_str} category:primary'
         
         try:
             # Get message list
             result = self.service.users().messages().list(
                 userId='me',
                 q=query,
-                maxResults=max_results
+                maxResults=max_results,
+                labelIds=['INBOX']
             ).execute()
             
             messages = result.get('messages', [])

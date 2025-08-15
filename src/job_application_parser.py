@@ -2,7 +2,7 @@ import os
 import json
 import re
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Tuple
 import google.generativeai as genai
 
 @dataclass
@@ -112,7 +112,7 @@ class JobApplicationParser:
             return False
             
         prompt = self.create_classification_prompt(email_subject)
-        response_text = self._send_to_gemini(prompt, max_tokens=100)
+        response_text = self._send_to_gemini(prompt, max_tokens=300)
         
         if not response_text:
             print("No response text when trying to classify")
@@ -164,3 +164,101 @@ class JobApplicationParser:
         except Exception as e:
             print(f"Error processing extraction result: {e}")
             return None
+
+    def classify_email_batch(self, email_subjects: List[str]) -> List[bool]:
+        """
+        Classify multiple email subjects in a single batch request using Gemini AI
+        
+        Args:
+            email_subjects: List of email subject lines to classify
+            
+        Returns:
+            List[bool]: List of boolean values indicating if each email is job-related
+                       Returns False for subjects that couldn't be classified
+        """
+
+        if not email_subjects:
+            return []
+        
+        # Filter out empty subjects and keep track of original indices
+        valid_subjects = []
+        original_indices = []
+        
+        for i, subject in enumerate(email_subjects):
+            if subject and subject.strip():
+                valid_subjects.append(subject.strip())
+                original_indices.append(i)
+        
+        if not valid_subjects:
+            return [False] * len(email_subjects)
+        
+        # Create batch prompt
+        batch_prompt = self._create_batch_classification_prompt(valid_subjects)
+        
+        # Send to Gemini with higher token limit for batch response
+        response_text = self._send_to_gemini(batch_prompt, max_tokens=4000)
+        
+        if not response_text:
+            print("No response text for batch classification")
+            return [False] * len(email_subjects)
+        
+        # Parse batch response
+        results = self._parse_batch_classification_response(response_text, len(valid_subjects))
+        
+        # Map results back to original indices
+        final_results = [False] * len(email_subjects)
+        for i, original_idx in enumerate(original_indices):
+            if i < len(results):
+                final_results[original_idx] = results[i]
+        
+        return final_results
+    
+    def _create_batch_classification_prompt(self, subjects: List[str]) -> str:
+        """Create a prompt for batch classification of email subjects"""
+        try:
+            # Get the directory where this script is located
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            # Go up one level to the project root, then into prompt_templates
+            template_path = os.path.join(script_dir, '..', 'prompt_templates', 'batch_classification_template.txt')
+            
+            with open(template_path, 'r', encoding='utf-8') as f:
+                prompt_template = f.read()
+            
+            # Create numbered list of subjects
+            subjects_list = ""
+            for i, subject in enumerate(subjects, 1):
+                subjects_list += f"{i}. {subject}\n"
+            
+            return prompt_template.format(email_subjects_list=subjects_list)
+            
+        except FileNotFoundError:
+            print("Error: prompt_templates/batch_classification_template.txt not found")
+            # Fallback to basic prompt if template file is missing
+            prompt = "Classify each email subject as job-related (YES) or not (NO):\n\n"
+            for i, subject in enumerate(subjects, 1):
+                prompt += f"{i}. {subject}\n"
+            prompt += "\nResponses (one per line, only YES or NO):\n"
+            return prompt
+    
+    def _parse_batch_classification_response(self, response: str, expected_count: int) -> List[bool]:
+        """Parse the batch classification response into a list of boolean values"""
+        try:
+            lines = [line.strip().upper() for line in response.strip().split('\n') if line.strip()]
+            
+            results = []
+            for line in lines:
+                # Look for YES/NO in each line, handling numbered responses
+                if 'YES' in line:
+                    results.append(True)
+                elif 'NO' in line:
+                    results.append(False)
+            
+            # Ensure we have the expected number of results
+            while len(results) < expected_count:
+                results.append(False)  # Default to False for missing responses
+            
+            return results[:expected_count]  # Trim if we got too many responses
+            
+        except Exception as e:
+            print(f"Error parsing batch classification response: {e}")
+            return [False] * expected_count

@@ -1,0 +1,13 @@
+Classify each email subject as job application related or not job application related.
+
+For each subject, respond with exactly "YES" if it's related to:
+- Job applications or application status
+- Interview scheduling or feedback  
+- Job offers or rejections
+
+Respond with exactly "NO" if it's not job-application-related or is an ad for job opportunities.
+
+Email Subjects:
+{email_subjects_list}
+
+Responses (one per line, only YES or NO):
