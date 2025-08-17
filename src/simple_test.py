@@ -5,7 +5,6 @@ from job_application_parser import JobApplicationParser
 def main():
     # Initialize Gmail service and authenticate
     gmail = GmailService()
-    gmail.authenticate()
 
     print("GETTING EMAILS")
     

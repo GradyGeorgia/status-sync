@@ -41,6 +41,8 @@ class GmailService:
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.credentials_file = os.path.join(parent_dir, 'credentials.json')
         self.token_file = os.path.join(parent_dir, 'token.json')
+
+        self.authenticate()
     
     def authenticate(self):
         """Gmail API authentication"""

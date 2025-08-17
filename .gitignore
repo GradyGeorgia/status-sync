@@ -1,6 +1,10 @@
 # Credentials and authentication
 credentials.json
 token.json
+token_sheets.json
+
+# Spreadsheet configuration
+spreadsheet_id.txt
 
 # API keys (if stored in files)
 .env

@@ -152,31 +152,41 @@ class JobApplicationParser:
         
         return is_job_related
     
-    def classify_email_batch(self, email_subjects: List[str]) -> List[bool]:
+    def filter_emails(self, emails: List[Dict]) -> List[Dict]:
         """
-        Classify multiple email subjects in a single batch request using Gemini AI
+        Filter emails to only return those classified as job-related using Gemini AI
         
         Args:
-            email_subjects: List of email subject lines to classify
+            emails: List of email dictionaries with 'subject', 'from', 'body', etc.
             
         Returns:
-            List[bool]: List of boolean values indicating if each email is job-related
-                       Returns False for subjects that couldn't be classified
+            List[Dict]: List of email dictionaries that are classified as job-related
         """
-        if not email_subjects:
+        if not emails:
             return []
+        
+        # Extract subjects for batch classification
+        email_subjects = [email.get('subject', '') for email in emails]
         
         batch_prompt = self._create_batch_classification_prompt(email_subjects)
         if not batch_prompt:
-            return [False] * len(email_subjects)
+            return []
         
         response_text = self._send_to_gemini(batch_prompt, max_tokens=4000)
         
         if not response_text:
             print("No response text for batch classification")
-            return [False] * len(email_subjects)
+            return []
         
-        return self._parse_batch_classification_response(response_text, len(email_subjects))
+        classifications = self._parse_batch_classification_response(response_text, len(email_subjects))
+        
+        # Filter emails based on classifications
+        job_related_emails = []
+        for email, is_job_related in zip(emails, classifications):
+            if is_job_related:
+                job_related_emails.append(email)
+        
+        return job_related_emails
     
     def _parse_batch_classification_response(self, response: str, expected_count: int) -> List[bool]:
         """Parse the batch classification response into a list of boolean values"""
