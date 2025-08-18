@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 from gmail_service import GmailService
 from google_spreadsheet_service import GoogleSheetsService
 from job_application_parser import JobApplicationParser
@@ -7,39 +8,64 @@ MAX_EMAILS_TO_PROCESS = 20
 START_DATE = "2023-9-1"
 END_DATE = "2023-9-30"
 
+# Configure logging for main program
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('statussync.log'),
+        logging.StreamHandler()
+    ]
+)
+
+# Create logger for main program
+logger = logging.getLogger(__name__)
+
 def main():
-    print("SETTING UP GMAIL SERVICE")
+    logger.info("Setting up Gmail service")
     gmail_service = GmailService()
 
-    print("RETRIEVING EMAILS")
+    logger.info(f"Retrieving emails from {START_DATE} to {END_DATE}")
     emails = gmail_service.get_emails(
         start_date = START_DATE,
         end_date = END_DATE
     )
+    emails = [email for email in emails if email.subject.strip()][:MAX_EMAILS_TO_PROCESS]
     if not emails:
+        logger.info("No emails found to process")
         return
-    emails = [email for email in emails if email["subject"]][:MAX_EMAILS_TO_PROCESS]
-    print(f"PROCESSING {len(emails)} EMAILS")
+    logger.info(f"Processing {len(emails)} emails")
 
-    print("SETTING UP JOB APPLICATION PARSER")
+    logger.info("Setting up job application parser")
     job_application_parser = JobApplicationParser()
     
-    print(f"CLASSIFYING {len(emails)} EMAILS")
+    logger.info(f"Classifying {len(emails)} emails")
     job_app_emails = job_application_parser.filter_emails(emails)
-    print(f"FOUND {len(job_app_emails)} JOB APP EMAILS")
+    if not job_app_emails:
+        logger.info("No job application emails found")
+        return
+    logger.info(f"Found {len(job_app_emails)} job application emails")
 
-    print("EXTRACTING INFO FROM EMAILS")
+    logger.info("Extracting information from job application emails")
     job_app_data = [job_application_parser.extract_email_data(email) for email in job_app_emails]
-    print("EXTRACTED INFO FROM EMAILS")
+    job_app_data = [data for data in job_app_data if data is not None]  # Filter out None results
+    if not job_app_data:
+        logger.info("No valid job application data extracted")
+        return
+    logger.info(f"Successfully extracted information from {len(job_app_data)} emails")
 
-    print("SETTING UP GOOGLE SPREADSHEET SERVICE")
+    logger.info("Setting up Google Spreadsheet service")
     google_sheets_service = GoogleSheetsService()
 
-    print("UPDATING SPREADSHEET")
+    logger.info("Updating spreadsheet with job application data")    
     for job_app in job_app_data:
-        google_sheets_service.add_data_row(job_app)
-
-    print("COMPLETED")
+        google_sheets_service.add_or_update_job_application(job_app)
+    logger.info(f"Spreadsheet update completed")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        logger.info("Program completed successfully")
+    except Exception as e:
+        logger.error(f"Program failed with error: {e}")
+        raise

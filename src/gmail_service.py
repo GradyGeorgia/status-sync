@@ -1,37 +1,23 @@
 import os
 import base64
 import re
+import logging
 from datetime import datetime
+from typing import List
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 import html2text
 
+# Import Email class
+from models import Email
+
+# Setup logging for this module
+logger = logging.getLogger(__name__)
+
 # Gmail API scope for reading emails
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
-
-# Initialize html2text converter
-h = html2text.HTML2Text()
-h.ignore_links = True
-h.ignore_images = True
-h.body_width = 0  # Don't wrap lines
-h.unicode_snob = True  # Better Unicode handling
-
-def strip_html(html_content: str) -> str:
-    """Strip HTML tags and clean up text content using html2text"""
-    if not html_content:
-        return ""
-    
-    # Use html2text to convert HTML to clean text
-    clean_text = h.handle(html_content)
-    
-    # Clean up extra whitespace
-    clean_text = re.sub(r'\n\s*\n', '\n\n', clean_text)  # Multiple newlines to double newlines
-    clean_text = re.sub(r'[ \t]+', ' ', clean_text)  # Multiple spaces/tabs to single space
-    clean_text = clean_text.strip()
-    
-    return clean_text
 
 class GmailService:
     def __init__(self):
@@ -42,7 +28,29 @@ class GmailService:
         self.credentials_file = os.path.join(parent_dir, 'credentials.json')
         self.token_file = os.path.join(parent_dir, 'token.json')
 
+        # Initialize html2text converter
+        self._html_converter = html2text.HTML2Text()
+        self._html_converter.ignore_links = True
+        self._html_converter.ignore_images = True
+        self._html_converter.body_width = 0  # Don't wrap lines
+        self._html_converter.unicode_snob = True  # Better Unicode handling
+
         self.authenticate()
+    
+    def _strip_html(self, html_content: str) -> str:
+        """Strip HTML tags and clean up text content using html2text"""
+        if not html_content:
+            return ""
+        
+        # Use html2text to convert HTML to clean text
+        clean_text = self._html_converter.handle(html_content)
+        
+        # Clean up extra whitespace
+        clean_text = re.sub(r'\n\s*\n', '\n\n', clean_text)  # Multiple newlines to double newlines
+        clean_text = re.sub(r'[ \t]+', ' ', clean_text)  # Multiple spaces/tabs to single space
+        clean_text = clean_text.strip()
+        
+        return clean_text
     
     def authenticate(self):
         """Gmail API authentication"""
@@ -58,6 +66,7 @@ class GmailService:
                 creds.refresh(Request())
             else:
                 if not os.path.exists(self.credentials_file):
+                    logger.error(f"Gmail credentials file not found: {self.credentials_file}")
                     raise FileNotFoundError(f"Credentials file '{self.credentials_file}' not found!")
                 
                 flow = InstalledAppFlow.from_client_secrets_file(
@@ -103,13 +112,13 @@ class GmailService:
                     decoded_data = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
                     
                     if mime_type == 'text/html':
-                        decoded_data = strip_html(decoded_data)
+                        decoded_data = self._strip_html(decoded_data)
                     
                     body += decoded_data
         
         return body
     
-    def get_emails(self, start_date, end_date, max_results=100):
+    def get_emails(self, start_date, end_date, max_results=100) -> List[Email]:
         """
         Get emails between two dates
         
@@ -119,7 +128,7 @@ class GmailService:
             max_results: Maximum number of emails to retrieve (default: 100)
         
         Returns:
-            List of dictionaries with 'subject', 'body', 'date', 'from', 'to'
+            List of Email objects
         """
         if not self.service:
             raise RuntimeError("Not authenticated")
@@ -141,7 +150,7 @@ class GmailService:
             messages = result.get('messages', [])
             
             if not messages:
-                print("No emails found in the specified date range")
+                logger.warning(f"No emails found in date range {start_str} to {end_str}")
                 return []
             
             # Parse each email
@@ -151,17 +160,17 @@ class GmailService:
                     email_data = self._parse_single_email(msg['id'])
                     parsed_emails.append(email_data)
                 except Exception as e:
-                    print(f"Error parsing email {i}: {e}")
+                    logger.warning(f"Failed to parse email {i}: {e}")
                     continue
             
             return parsed_emails
             
         except Exception as error:
-            print(f"An error occurred: {error}")
+            logger.error(f"Gmail API error while retrieving emails: {error}")
             return []
     
-    def _parse_single_email(self, message_id):
-        """Parse a single email by message ID"""
+    def _parse_single_email(self, message_id) -> Email:
+        """Parse a single email by message ID and return an Email object"""
         # Get the message
         message = self.service.users().messages().get(
             userId='me',
@@ -181,10 +190,10 @@ class GmailService:
         # Extract body
         body = self._extract_body(message['payload'])
         
-        return {
-            'subject': subject,
-            'body': body,
-            'date': date,
-            'from': sender,
-            'to': recipient
-        }
+        return Email(
+            subject=subject,
+            body=body,
+            sender=sender,
+            recipient=recipient,
+            date=date
+        )

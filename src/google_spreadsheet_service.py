@@ -1,11 +1,15 @@
 import os
+import logging
+from typing import Dict
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from job_application_parser import JobApplication
-from example_job_app_info import email_data_list
+from models import JobApplication
+
+# Setup logging for this module
+logger = logging.getLogger(__name__)
 
 # Google Sheets API scope - create and manage spreadsheets only (no access to existing sheets)
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
@@ -52,7 +56,7 @@ class GoogleSheetsService:
         try:
             self.service = build('sheets', 'v4', credentials=creds)
         except HttpError as error:
-            print(f"An error occurred during authentication: {error}")
+            logger.error(f"Error occurred during Google Sheets authentication: {error}")
             raise
 
     def _get_or_create_spreadsheet(self) -> str:
@@ -70,7 +74,7 @@ class GoogleSheetsService:
                     if spreadsheet_id:
                         return spreadsheet_id
             except IOError as e:
-                print(f"Error reading spreadsheet ID file: {e}")
+                logger.warning(f"Error reading spreadsheet ID file: {e}")
         
         # Create new spreadsheet if no existing ID found
         spreadsheet_id = self.create_sheet("Job Applications Tracker")
@@ -80,7 +84,7 @@ class GoogleSheetsService:
             with open(self.spreadsheet_id_file, 'w') as f:
                 f.write(spreadsheet_id)
         except IOError as e:
-            print(f"Error saving spreadsheet ID: {e}")
+            logger.warning(f"Error saving spreadsheet ID: {e}")
         
         return spreadsheet_id
 
@@ -112,12 +116,12 @@ class GoogleSheetsService:
             spreadsheet_id = sheet.get('spreadsheetId')
 
             headers = ["Status", "Company", "Position"]
-            sheets_service.add_headers(headers)
+            self.add_headers(headers)
             
             return spreadsheet_id
             
         except HttpError as error:
-            print(f"An error occurred while creating spreadsheet: {error}")
+            logger.error(f"Error occurred while creating spreadsheet: {error}")
             raise
 
     def add_headers(self, headers: list, sheet_name: str = "Sheet1"):
@@ -145,7 +149,7 @@ class GoogleSheetsService:
             ).execute()
             
         except HttpError as error:
-            print(f"An error occurred while adding headers: {error}")
+            logger.error(f"Error occurred while adding headers: {error}")
             raise
 
     def add_data_row(self, job_application: JobApplication, sheet_name: str = "Sheet1"):
@@ -182,5 +186,108 @@ class GoogleSheetsService:
             ).execute()
             
         except HttpError as error:
-            print(f"An error occurred while adding data row: {error}")
+            logger.error(f"Error occurred while adding data row: {error}")
             raise
+
+    def get_existing_data(self, sheet_name: str = "Sheet1") -> Dict[str, Dict]:
+        """
+        Get all existing data from the spreadsheet
+        
+        Returns:
+            Dict mapping unique keys to row data (including row number)
+        """
+        if not self.service:
+            raise ValueError("Service not authenticated.")
+        
+        try:
+            # Get all data from the sheet
+            range_name = f"{sheet_name}!A:C"
+            result = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=range_name
+            ).execute()
+            
+            values = result.get('values', [])
+            existing_data = {}
+            
+            # Skip header row (index 0), start from row 1
+            for i, row in enumerate(values[1:], start=2):  # start=2 because spreadsheet rows are 1-indexed
+                if len(row) >= 3:  # Ensure we have status, company, position
+                    status, company, position = row[0], row[1], row[2]
+                    unique_key = f"{company.strip().lower()}|{position.strip().lower()}"
+                    existing_data[unique_key] = {
+                        'row_number': i,
+                        'status': status,
+                        'company': company,
+                        'position': position
+                    }
+            
+            return existing_data
+            
+        except HttpError as error:
+            logger.error(f"Error reading existing data: {error}")
+            return {}
+
+    def update_row(self, row_number: int, job_application: JobApplication, sheet_name: str = "Sheet1"):
+        """
+        Update a specific row with new job application data
+        
+        Args:
+            row_number: The row number to update (1-indexed)
+            job_application: JobApplication object with updated data
+            sheet_name: Name of the sheet
+        """
+        if not self.service:
+            raise ValueError("Service not authenticated.")
+        
+        try:
+            range_name = f"{sheet_name}!A{row_number}:C{row_number}"
+            data_row = [
+                job_application.status,
+                job_application.company_name,
+                job_application.position_title
+            ]
+            
+            value_range_body = {
+                'values': [data_row]
+            }
+            
+            self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range=range_name,
+                valueInputOption='RAW',
+                body=value_range_body
+            ).execute()
+            
+        except HttpError as error:
+            logger.error(f"Error updating row {row_number}: {error}")
+            raise
+
+    def add_or_update_job_application(self, job_application: JobApplication, sheet_name: str = "Sheet1"):
+        """
+        Add new job application or update existing one based on company + position
+        
+        Args:
+            job_application: JobApplication object
+            sheet_name: Name of the sheet
+        """
+        # Get unique key for this job application
+        unique_key = job_application.get_unique_key()
+        
+        # Get existing data
+        existing_data = self.get_existing_data(sheet_name)
+        
+        if unique_key in existing_data:
+            # Check if status has changed
+            existing_status = existing_data[unique_key]['status']
+            if existing_status != job_application.status:
+                # Update existing row
+                row_number = existing_data[unique_key]['row_number']
+                self.update_row(row_number, job_application, sheet_name)
+                return 'updated'
+            else:
+                return 'no_change'
+        else:
+            # Add new row
+            self.add_data_row(job_application, sheet_name)
+            return 'added'

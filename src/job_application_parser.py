@@ -1,17 +1,16 @@
 import os
 import json
 import re
+import logging
 from dataclasses import dataclass
-from typing import Dict, Optional, List, Tuple
+from typing import Optional, List
 import google.generativeai as genai
 
-@dataclass
-class JobApplication:
-    company_name: str
-    position_title: str
-    status: str
-    is_job_application_update: bool = False
-    confidence: float = 0.0
+# Import models
+from models import Email, JobApplication
+
+# Setup logging for this module
+logger = logging.getLogger(__name__)
 
 class JobApplicationParser:
     def __init__(self):
@@ -48,7 +47,7 @@ class JobApplicationParser:
             )
             
             if not response.candidates:
-                print(f"No response candidates returned during Gemini API call")
+                logger.warning("No response candidates returned from Gemini API")
                 return None
                 
             candidate = response.candidates[0]
@@ -61,17 +60,17 @@ class JobApplicationParser:
                     4: "RECITATION"
                 }
                 reason = finish_reasons.get(candidate.finish_reason, f"Unknown ({candidate.finish_reason})")
-                print(f"Gemini response failed. Finish reason: {reason}")
+                logger.warning(f"Gemini response failed with finish reason: {reason}")
                 return None
             
             if not candidate.content or not candidate.content.parts:
-                print(f"Gemini response has no content parts")
+                logger.warning("Gemini response has no content parts")
                 return None
                 
             return candidate.content.parts[0].text.strip()
             
         except Exception as e:
-            print(f"Error during Gemini API call: {e}")
+            logger.error(f"Error during Gemini API call: {e}")
             return None
     
     def _create_classification_prompt(self, email_subject: str) -> Optional[str]:
@@ -85,7 +84,7 @@ class JobApplicationParser:
             
             return prompt_template.format(email_subject=email_subject)
         except FileNotFoundError:
-            print("Error: classification_template.txt not found")
+            logger.error("Classification template file not found: classification_template.txt")
             return None
 
     def _create_batch_classification_prompt(self, subjects: List[str]) -> Optional[str]:
@@ -103,7 +102,7 @@ class JobApplicationParser:
             
             return prompt_template.format(email_subjects_list=subjects_list)
         except FileNotFoundError:
-            print("Error: batch_classification_template.txt not found")
+            logger.error("Batch classification template file not found: batch_classification_template.txt")
             return None
     
     def _create_extraction_prompt(self, email_subject: str, email_sender: str, email_body: str) -> Optional[str]:
@@ -121,7 +120,7 @@ class JobApplicationParser:
                 email_body=email_body[:1500]
             )
         except FileNotFoundError:
-            print("Error: extraction_template.txt not found")
+            logger.error("Extraction template file not found: extraction_template.txt")
             return None
 
     def classify_email(self, email_subject: str) -> bool:
@@ -135,7 +134,7 @@ class JobApplicationParser:
             bool: True if the email appears to be job application related, False otherwise
         """
         if not email_subject.strip():
-            print("Email subject is empty when trying to classify")
+            logger.warning("Email subject is empty when trying to classify")
             return False
             
         prompt = self._create_classification_prompt(email_subject)
@@ -145,28 +144,28 @@ class JobApplicationParser:
         response_text = self._send_to_gemini(prompt, max_tokens=300)
         
         if not response_text:
-            print("No response text when trying to classify")
+            logger.warning("No response text received when trying to classify")
             return False
             
         is_job_related = "YES" in response_text.upper()
         
         return is_job_related
     
-    def filter_emails(self, emails: List[Dict]) -> List[Dict]:
+    def filter_emails(self, emails: List[Email]) -> List[Email]:
         """
         Filter emails to only return those classified as job-related using Gemini AI
         
         Args:
-            emails: List of email dictionaries with 'subject', 'from', 'body', etc.
+            emails: List of Email objects
             
         Returns:
-            List[Dict]: List of email dictionaries that are classified as job-related
+            List[Email]: List of Email objects that are classified as job-related
         """
         if not emails:
             return []
         
         # Extract subjects for batch classification
-        email_subjects = [email.get('subject', '') for email in emails]
+        email_subjects = [email.subject for email in emails]
         
         batch_prompt = self._create_batch_classification_prompt(email_subjects)
         if not batch_prompt:
@@ -175,7 +174,7 @@ class JobApplicationParser:
         response_text = self._send_to_gemini(batch_prompt, max_tokens=4000)
         
         if not response_text:
-            print("No response text for batch classification")
+            logger.warning("No response text received for batch classification")
             return []
         
         classifications = self._parse_batch_classification_response(response_text, len(email_subjects))
@@ -206,15 +205,15 @@ class JobApplicationParser:
             return results[:expected_count]
             
         except Exception as e:
-            print(f"Error parsing batch classification response: {e}")
+            logger.error(f"Error parsing batch classification response: {e}")
             return [False] * expected_count
 
-    def extract_email_data(self, email_data: Dict) -> Optional[JobApplication]:
+    def extract_email_data(self, email: Email) -> Optional[JobApplication]:
         """Parse single email using Gemini AI"""
         
-        subject = email_data.get('subject', '')
-        body = email_data.get('body', '')
-        sender = email_data.get('from', '')
+        subject = email.subject
+        body = email.body
+        sender = email.sender
         
         prompt = self._create_extraction_prompt(subject, sender, body)
         if not prompt:
@@ -229,14 +228,14 @@ class JobApplicationParser:
             # Extract JSON from response
             json_match = re.search(r'\{[^}]+\}', response_text, re.DOTALL)
             if not json_match:
-                print("No JSON found in response")
+                logger.warning("No JSON found in Gemini response")
                 return None
                 
             data = json.loads(json_match.group(0))
             
             # Validate required fields
             if not all(key in data for key in ['company_name', 'position_title', 'status']):
-                print("Missing required fields in response")
+                logger.warning("Missing required fields in extraction response")
                 return None
             
             job_app = JobApplication(
@@ -250,8 +249,8 @@ class JobApplicationParser:
             return job_app
             
         except json.JSONDecodeError as e:
-            print(f"Error parsing JSON response: {e}")
+            logger.error(f"Error parsing JSON response: {e}")
             return None
         except Exception as e:
-            print(f"Error processing extraction result: {e}")
+            logger.error(f"Error processing extraction result: {e}")
             return None
