@@ -5,10 +5,9 @@ from google_spreadsheet_service import GoogleSheetsService
 from job_application_parser import JobApplicationParser
 
 MAX_EMAILS_TO_PROCESS = 20
-START_DATE = "2023-9-1"
-END_DATE = "2023-9-30"
+START_DATE = "2023/9/1"
+END_DATE = "2023/9/30"
 
-# Configure logging for main program
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -18,7 +17,6 @@ logging.basicConfig(
     ]
 )
 
-# Create logger for main program
 logger = logging.getLogger(__name__)
 
 def main():
@@ -30,6 +28,7 @@ def main():
         start_date = START_DATE,
         end_date = END_DATE
     )
+    logger.info(f"Retrieved {len(emails)} emails")
     emails = [email for email in emails if email.subject.strip()][:MAX_EMAILS_TO_PROCESS]
     if not emails:
         logger.info("No emails found to process")
@@ -48,7 +47,7 @@ def main():
 
     logger.info("Extracting information from job application emails")
     job_app_data = [job_application_parser.extract_email_data(email) for email in job_app_emails]
-    job_app_data = [data for data in job_app_data if data is not None]  # Filter out None results
+    job_app_data = [job_app for job_app in job_app_data if job_app is not None]
     if not job_app_data:
         logger.info("No valid job application data extracted")
         return
