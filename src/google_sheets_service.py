@@ -74,7 +74,7 @@ class GoogleSheetsService:
             existing_status = existing_data[unique_key]['status']
             if existing_status != job_application.status:
                 row_number = existing_data[unique_key]['row_number']
-                self._update_row(row_number, job_application, sheet_name)
+                self._update_row(row_number, job_application, existing_data[unique_key], sheet_name)
         else:
             self._add_row(job_application, sheet_name)
 
@@ -182,20 +182,20 @@ class GoogleSheetsService:
             logger.error(f"Error occurred while adding data row: {error}")
             raise
 
-    def _update_row(self, row_number: int, job_application: JobApplicationStatus, sheet_name: str = "Sheet1") -> None:
+    def _update_row(self, row_number: int, job_application: JobApplicationStatus, existing_row_data: Dict, sheet_name: str = "Sheet1") -> None:
         if not self.service:
             raise ValueError("Service not authenticated.")
         
         try:
-            range_name = f"{sheet_name}!A{row_number}:E{row_number}"
             data_row = [
-                job_application.status,
-                job_application.company_name,
-                job_application.position_title,
-                job_application.position_location,
-                job_application.action_date
+                job_application.status if job_application.status != "unknown" else existing_row_data.get('status', ''),
+                job_application.company_name if job_application.company_name != "unknown" else existing_row_data.get('company', ''),
+                job_application.position_title if job_application.position_title != "unknown" else existing_row_data.get('position', ''),
+                job_application.position_location if job_application.position_location != "unknown" else existing_row_data.get('location', ''),
+                job_application.action_date if job_application.action_date != "unknown" else existing_row_data.get('action_date', '')
             ]
             
+            range_name = f"{sheet_name}!A{row_number}:E{row_number}"
             value_range_body = {'values': [data_row]}
             
             self.service.spreadsheets().values().update(

@@ -79,7 +79,7 @@ class JobApplicationParser:
                 prompt,
                 generation_config=genai.types.GenerationConfig(
                     temperature=0.1,
-                    top_p=0.8,
+                    top_p=0.5,
                     top_k=40,
                     max_output_tokens=max_tokens,
                 )

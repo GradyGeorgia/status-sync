@@ -46,19 +46,20 @@ def main():
     logger.info(f"Found {len(job_app_emails)} job application emails")
 
     logger.info("Extracting information from job application emails")
-    job_app_data = [job_application_parser.extract_email_data(email) for email in job_app_emails]
-    job_app_data = [job_app for job_app in job_app_data if job_app is not None]
-    if not job_app_data:
+    job_app_statuses = [job_application_parser.extract_email_data(email) for email in job_app_emails]
+    job_app_statuses = [job_app_status for job_app_status in job_app_statuses if job_app_status is not None]
+    job_app_statuses = [job_app_status for job_app_status in job_app_statuses if job_app_status.is_job_application_update]
+    if not job_app_statuses:
         logger.info("No valid job application data extracted")
         return
-    logger.info(f"Successfully extracted information from {len(job_app_data)} emails")
+    logger.info(f"Successfully extracted information from {len(job_app_statuses)} emails")
 
     logger.info("Setting up Google Spreadsheet service")
     google_sheets_service = GoogleSheetsService()
 
     logger.info("Updating spreadsheet with job application data")    
-    for job_app in job_app_data:
-        google_sheets_service.add_or_update_job_application(job_app)
+    for job_app_status in job_app_statuses:
+        google_sheets_service.add_or_update_job_application(job_app_status)
     logger.info(f"Spreadsheet update completed")
 
 if __name__ == "__main__":
