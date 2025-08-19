@@ -6,7 +6,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from models import JobApplication
+from models import JobApplicationStatus
 
 logger = logging.getLogger(__name__)
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
@@ -20,7 +20,7 @@ class GoogleSheetsService:
         self.spreadsheet_id_file = os.path.join(parent_dir, 'spreadsheet_id.txt')
         
         self._authenticate()
-        self.spreadsheet_id = self._get_or_create_spreadsheet()
+        self._get_or_create_spreadsheet()
     
     def _authenticate(self) -> None:
         creds = None
@@ -47,27 +47,26 @@ class GoogleSheetsService:
             logger.error(f"Error occurred during Google Sheets authentication: {error}")
             raise
 
-    def _get_or_create_spreadsheet(self) -> str:
+    def _get_or_create_spreadsheet(self) -> None:
         if os.path.exists(self.spreadsheet_id_file):
             try:
                 with open(self.spreadsheet_id_file, 'r') as f:
                     spreadsheet_id = f.read().strip()
                     if spreadsheet_id:
-                        return spreadsheet_id
+                        self.spreadsheet_id = spreadsheet_id
+                        return
             except IOError as e:
                 logger.warning(f"Error reading spreadsheet ID file: {e}")
         
-        spreadsheet_id = self._create_sheet("Job Applications Tracker")
+        self._create_sheet("Job Applications Tracker")
         
         try:
             with open(self.spreadsheet_id_file, 'w') as f:
-                f.write(spreadsheet_id)
+                f.write(self.spreadsheet_id)
         except IOError as e:
             logger.warning(f"Error saving spreadsheet ID: {e}")
-        
-        return spreadsheet_id
     
-    def add_or_update_job_application(self, job_application: JobApplication, sheet_name: str = "Sheet1") -> None:
+    def add_or_update_job_application(self, job_application: JobApplicationStatus, sheet_name: str = "Sheet1") -> None:
         unique_key = job_application.get_unique_key()
         existing_data = self._get_existing_data(sheet_name)
         
@@ -77,9 +76,9 @@ class GoogleSheetsService:
                 row_number = existing_data[unique_key]['row_number']
                 self._update_row(row_number, job_application, sheet_name)
         else:
-            self._add_data_row(job_application, sheet_name)
+            self._add_row(job_application, sheet_name)
 
-    def _create_sheet(self, title: str) -> str:
+    def _create_sheet(self, title: str) -> None:
         if not self.service:
             raise ValueError("Service not authenticated. Call authenticate() first.")
         
@@ -90,11 +89,9 @@ class GoogleSheetsService:
                 fields='spreadsheetId'
             ).execute()
             
-            spreadsheet_id = sheet.get('spreadsheetId')
-            headers = ["Status", "Company", "Position"]
+            self.spreadsheet_id = sheet.get('spreadsheetId')
+            headers = ["Status", "Company", "Position", "Location", "Action Date"]
             self._add_headers(headers)
-            
-            return spreadsheet_id
             
         except HttpError as error:
             logger.error(f"Error occurred while creating spreadsheet: {error}")
@@ -124,7 +121,7 @@ class GoogleSheetsService:
             raise ValueError("Service not authenticated.")
         
         try:
-            range_name = f"{sheet_name}!A:C"
+            range_name = f"{sheet_name}!A:E"
             result = self.service.spreadsheets().values().get(
                 spreadsheetId=self.spreadsheet_id,
                 range=range_name
@@ -135,13 +132,20 @@ class GoogleSheetsService:
             
             for i, row in enumerate(values[1:], start=2):
                 if len(row) >= 3:
-                    status, company, position = row[0], row[1], row[2]
+                    status = row[0] if len(row) > 0 else ""
+                    company = row[1] if len(row) > 1 else ""
+                    position = row[2] if len(row) > 2 else ""
+                    location = row[3] if len(row) > 3 else ""
+                    action_date = row[4] if len(row) > 4 else ""
+                    
                     unique_key = f"{company.strip().lower()}|{position.strip().lower()}"
                     existing_data[unique_key] = {
                         'row_number': i,
                         'status': status,
                         'company': company,
-                        'position': position
+                        'position': position,
+                        'location': location,
+                        'action_date': action_date
                     }
             
             return existing_data
@@ -150,7 +154,7 @@ class GoogleSheetsService:
             logger.error(f"Error reading existing data: {error}")
             return {}
         
-    def _add_data_row(self, job_application: JobApplication, sheet_name: str = "Sheet1") -> None:
+    def _add_row(self, job_application: JobApplicationStatus, sheet_name: str = "Sheet1") -> None:
         if not self.service:
             raise ValueError("Service not authenticated.")
         
@@ -158,10 +162,12 @@ class GoogleSheetsService:
             data_row = [
                 job_application.status,
                 job_application.company_name,
-                job_application.position_title
+                job_application.position_title,
+                job_application.position_location,
+                job_application.action_date
             ]
             
-            range_name = f"{sheet_name}!A:C"
+            range_name = f"{sheet_name}!A:E"
             value_range_body = {'values': [data_row]}
             
             self.service.spreadsheets().values().append(
@@ -176,16 +182,18 @@ class GoogleSheetsService:
             logger.error(f"Error occurred while adding data row: {error}")
             raise
 
-    def _update_row(self, row_number: int, job_application: JobApplication, sheet_name: str = "Sheet1") -> None:
+    def _update_row(self, row_number: int, job_application: JobApplicationStatus, sheet_name: str = "Sheet1") -> None:
         if not self.service:
             raise ValueError("Service not authenticated.")
         
         try:
-            range_name = f"{sheet_name}!A{row_number}:C{row_number}"
+            range_name = f"{sheet_name}!A{row_number}:E{row_number}"
             data_row = [
                 job_application.status,
                 job_application.company_name,
-                job_application.position_title
+                job_application.position_title,
+                job_application.position_location,
+                job_application.action_date
             ]
             
             value_range_body = {'values': [data_row]}

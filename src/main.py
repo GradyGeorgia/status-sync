@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import logging
 from gmail_service import GmailService
-from google_spreadsheet_service import GoogleSheetsService
+from google_sheets_service import GoogleSheetsService
 from job_application_parser import JobApplicationParser
 
 MAX_EMAILS_TO_PROCESS = 20

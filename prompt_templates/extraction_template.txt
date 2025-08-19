@@ -1,17 +1,73 @@
-Extract job application information from this email and respond with ONLY a JSON object.
+Extract job application information from an email and respond with ONLY a JSON object.
 
-Extract:
-- is_job_application_update: One of [yes, no]. Respond with "yes" if this email involves and update to an application status. Respond with "no" if this email is unrelated or an ad for positions.
-- company_name: The hiring company name
-- position_title: Job position title. Simplify this to just the name of the role without punctuation, such as "Software Engineer Intern 2024"
-- status: One of [applied, rejected, interview_scheduled, interview_completed, offer, offer_accepted, offer_declined, withdrawn, on_hold, unknown]
-- confidence: Your confidence level (0.0-1.0)
+Extract the following
+- is_job_application_update: One of [yes, no]. Respond with "yes" if this email involves an update to an application status.
+- company_name: The hiring company name.
+- position_title: Job position title. Strictly the simple name of the role without punctuation.
+- position_location: City and state (City, State Abbreviation) of the job or Virtual.
+- status: One of [applied, rejected, interview_to_schedule, interview_scheduled, asynchronous_interview, interview_completed, online_assessment, offer, offer_accepted, offer_declined, withdrawn, on_hold, unknown]
+- action_date: mm/dd/yyyy H:i am/pm. The date (and time if applicable) of the scheduled interview, asynchronous interview deadline, online assessment deadline, or offer decision deadline.
 
 If a piece of data is missing, put "unknown" for that value.
 
-Respond with ONLY valid JSON such as:
-{{"is_job_application_update": "yes", "company_name": "Google", "position_title": "Software Engineer", "status": "applied", "confidence": 0.9}}
-{{"is_job_application_update": "no", "company_name": "unknown", "position_title": "unknown", "status": "unknown", "confidence": 0.8}}
+Email: 
+Subject: Medline - Thank You For Your Application!
+From: Medline HR <MedlineHR@invalidemail.com>
+Body: Hi Grady,
+
+We've received your application for our IS Developer Analyst Intern (Java/JavaScript) - Summer 2024-INT0100IC position at our office in Madision, Wisconsin.
+
+You can access your account and make edits to your profile at anytime by returning to our careers page and logging in with your existing credentials. 
+
+Sincerely,
+
+Medline Talent Acquisition
+
+JSON response:
+```json
+{{
+  "is_job_application_update": "yes",
+  "company_name": "Medline",
+  "position_title": "IS Developer",
+  "position_location": "Madision, WI",
+  "status": "applied",
+  "action_date": "unknown"
+}}
+```
+
+Email:
+Subject: Interview with Zebra Technologies
+From: "Early Careers @ Zebra" <interviews@hirevue.com>
+Body: # INTERVIEW WITH Zebra Technologies
+
+---
+Dear Grady Georgia,   Zebra Technologies would like you to participate in a digital interview, powered by HireVue.
+---
+
+---
+|
+---
+POSITION | : | Mobile Software Engineer Summer Intern (Updated 2023)
+ESTIMATED DURATION | : | 5 minutes
+COMPLETE BY | : | Feb. 26, 2024 - 11:59 p.m. CST (UTC-0600)
+|
+---
+
+---
+If you cannot complete the interview by Feb. 26, 2024 - 11:59 p.m. CST (UTC-0600), please contact your Zebra Technologies recruitment representative.
+---
+
+JSON response:
+```json
+{{
+  "is_job_application_update": "yes",
+  "company_name": "Zebra Technologies",
+  "position_title": "Mobile Software Engineer",
+  "position_location": "unknown",
+  "status": "asynchronous_interview",
+  "action_date": "02/26/2024 11:59 pm"
+}}
+```
 
 Email:
 Subject: {email_subject}

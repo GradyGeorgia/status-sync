@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 @dataclass
 class Email:
-    subject: str
-    body: str
-    sender: str
+    subject: str = ""
+    body: str = ""
+    sender: str = ""
     recipient: str = ""
     date: str = ""
     
@@ -15,12 +15,13 @@ class Email:
         self.recipient = self.recipient.strip() if self.recipient else ""
 
 @dataclass
-class JobApplication:
-    company_name: str
-    position_title: str
-    status: str
+class JobApplicationStatus:
+    company_name: str = "unknown"
+    position_title: str = "unknown"
+    position_location: str = "unknown"
+    status: str = "unknown"
+    action_date: str = "unknown"
     is_job_application_update: bool = False
-    confidence: float = 0.0
 
     def get_unique_key(self) -> str:
         return f"{self.company_name.strip().lower()}|{self.position_title.strip().lower()}"

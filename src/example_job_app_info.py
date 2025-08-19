@@ -1,59 +1,66 @@
-from models import JobApplication
+from models import JobApplicationStatus
 
 email_data_list_1 = [
-    JobApplication(
+    JobApplicationStatus(
         company_name="Medline",
         position_title="IS Developer",
         status="applied",
         is_job_application_update=True,
-        confidence=1.0
+        position_location="Madison, WI",
+        action_date="unknown"
     ),
-    JobApplication(
+    JobApplicationStatus(
         company_name="HNI Corporation",
         position_title="Intern Information Technologies",
         status="applied",
         is_job_application_update=True,
-        confidence=1.0
+        position_location="unknown",
+        action_date="unknown"
     ),
-    JobApplication(
+    JobApplicationStatus(
         company_name="MISO",
         position_title="Internship Cyber Security",
         status="applied",
         is_job_application_update=True,
-        confidence=1.0
+        position_location="unknown",
+        action_date="unknown"
     )
 ]
 
 email_data_list_2 = [
-    JobApplication(
+    JobApplicationStatus(
         company_name="HNI Corporation",
         position_title="Intern Information Technologies",
+        position_location="Muscatine, IA",
         status="interview_scheduled",
-        is_job_application_update=True,
-        confidence=1.0
+        action_date="10/15/2023 2:00 pm",
+        is_job_application_update=True
     ),
-    JobApplication(
+    JobApplicationStatus(
         company_name="MISO",
         position_title="Internship Cyber Security",
+        position_location="unknown",
         status="rejected",
-        is_job_application_update=True,
-        confidence=1.0
+        action_date="unknown",
+        is_job_application_update=True
     )
 ]
 
 email_data_list_3 = [
-    JobApplication(
+    JobApplicationStatus(
         company_name="Medline",
         position_title="IS Developer",
+        position_location="Madison, WI",
         status="rejected",
-        is_job_application_update=True,
-        confidence=1.0
+        action_date="unknown",
+        is_job_application_update=True
     ),
-    JobApplication(
+    JobApplicationStatus(
         company_name="HNI Corporation",
         position_title="Intern Information Technologies",
+        position_location="Muscatine, IA",
         status="offer",
-        is_job_application_update=True,
-        confidence=1.0
+        action_date="11/01/2023 5:00 pm",
+        is_job_application_update=True
     ),
 ]

@@ -2,7 +2,7 @@ Classify each email subject as job application related or not job application re
 
 For each subject, respond with exactly "YES" if it's related to:
 - Job applications or application status
-- Interview scheduling or feedback  
+- Interview scheduling or online assessments to complete  
 - Job offers or rejections
 
 Respond with exactly "NO" if it's not job application related or is an ad for job opportunities.

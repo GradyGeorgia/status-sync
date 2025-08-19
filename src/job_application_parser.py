@@ -5,7 +5,7 @@ import logging
 from typing import Optional, List
 import google.generativeai as genai
 
-from models import Email, JobApplication
+from models import Email, JobApplicationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class JobApplicationParser:
         
         return [email for email, is_job_related in zip(emails, classifications) if is_job_related]
     
-    def extract_email_data(self, email: Email) -> Optional[JobApplication]:
+    def extract_email_data(self, email: Email) -> Optional[JobApplicationStatus]:
         prompt = self._create_extraction_prompt(email.subject, email.sender, email.body)
         if not prompt:
             return None
@@ -57,12 +57,13 @@ class JobApplicationParser:
                 logger.warning("Missing required fields in extraction response")
                 return None
             
-            return JobApplication(
-                company_name=data['company_name'].strip(),
-                position_title=data['position_title'].strip(),
-                status=data['status'].strip(),
-                is_job_application_update=data.get('is_job_application_update', 'no').strip().lower() == 'yes',
-                confidence=float(data.get('confidence', 0.8))
+            return JobApplicationStatus(
+                company_name=data.get('company_name').strip(),
+                position_title=data.get('position_title').strip(),
+                position_location=data.get('position_location', 'unknown').strip(),
+                status=data.get('status').strip(),
+                action_date=data.get('action_date', 'unknown').strip(),
+                is_job_application_update=data.get('is_job_application_update', 'no').strip().lower() == 'yes'
             )
             
         except json.JSONDecodeError as e:
